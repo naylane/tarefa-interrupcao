@@ -24,7 +24,7 @@ bool led_buffer[10][25] = {
     0, 1, 0, 1, 0, 
     0, 1, 1, 1, 0,
 
-    0, 1, 1, 1, 0,
+    0, 0, 1, 0, 0,
     0, 0, 1, 0, 0,
     0, 0, 1, 0, 0,
     0, 1, 1, 0, 0,
@@ -123,9 +123,9 @@ int main() {
 
     while (1) {
         gpio_put(RED_LED_PIN, 1);
-        sleep_ms(1000);
+        sleep_ms(100);
         gpio_put(RED_LED_PIN, 0);
-        sleep_ms(1000);
+        sleep_ms(100);
     }
 
     return 0;
@@ -163,7 +163,7 @@ static void gpio_irq_handler(uint gpio, uint32_t events) {
         last_time = current_time; // Atualiza o tempo do último evento
 
         if (gpio == 5) {
-            if(current_number < 10) { current_number++; }
+            if(current_number < 9) { current_number++; }
             set_led(22, 1, 12); // setando os leds na cor rosa
         } else if (gpio == 6) {
             if(current_number > 0) { current_number--; }
