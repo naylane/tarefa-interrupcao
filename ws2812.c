@@ -16,18 +16,19 @@
 #include "pico/stdlib.h"
 #include "hardware/pio.h"
 #include "hardware/clocks.h"
+#include "hardware/timer.h"
 #include "ws2812.pio.h"
 
 // Pinos
-#define RED_LED_PIN 11
+#define RED_LED_PIN 13
 #define A_BTN_PIN 5
 #define B_BTN_PIN 6
 #define IS_RGBW false
-#define NUM_PIXELS 25
+#define NUM_PIXELS 100
 #define WS2812_PIN 7
 
 // Variáveis globais
-static volatile uint a = 1;
+static volatile uint count_a = 0;
 static volatile uint32_t last_time = 0; // Armazena o tempo do último evento (em microssegundos)
 
 // Prototipação da função de interrupção
@@ -35,11 +36,29 @@ static volatile uint32_t last_time = 0; // Armazena o tempo do último evento (e
 
 // Buffer para armazenar quais LEDs estão ligados matriz 5x5
 bool led_buffer[NUM_PIXELS] = {
+    0, 1, 1, 1, 0, 
+    1, 0, 0, 0, 1, 
+    1, 0, 0, 0, 1, 
+    1, 0, 0, 0, 1, 
+    0, 1, 1, 1, 0,
+
     0, 0, 1, 0, 0, 
     0, 1, 1, 0, 0, 
     0, 0, 1, 0, 0, 
     0, 0, 1, 0, 0, 
-    0, 0, 1, 0, 0
+    0, 0, 1, 0, 0,
+
+    0, 1, 1, 1, 0, 
+    1, 0, 0, 1, 0, 
+    0, 0, 1, 0, 0, 
+    0, 1, 0, 0, 0, 
+    1, 1, 1, 1, 1,
+
+    1, 1, 1, 1, 0, 
+    0, 0, 0, 1, 0, 
+    0, 1, 1, 0, 0, 
+    0, 0, 0, 1, 0, 
+    1, 1, 1, 1, 0
 };
 
 static inline void put_pixel(uint32_t pixel_grb) {
@@ -55,7 +74,8 @@ void set_led(uint8_t r, uint8_t g, uint8_t b) {
     uint32_t color = urgb_u32(r, g, b);
 
     // Define todos os LEDs com a cor especificada
-    for (int i = 0; i < NUM_PIXELS; i++) {
+    int i = 0;
+    for (count_a; i < 25; i++) {
         if (led_buffer[i]) {
             put_pixel(color); // Liga o LED com um no buffer
         }
@@ -69,14 +89,14 @@ void set_led(uint8_t r, uint8_t g, uint8_t b) {
 static void gpio_irq_handler(uint gpio, uint32_t events) {
     // Obtém o tempo atual em microssegundos
     uint32_t current_time = to_us_since_boot(get_absolute_time());
-    printf("A = %d\n", a);
+    printf("A = %d\n", count_a);
     // Verifica se passou tempo suficiente desde o último evento
-    if (current_time - last_time > 200000) // 200 ms de debouncing
+    if (current_time - last_time > 2000000) // 200 ms? de debouncing
     {
         last_time = current_time; // Atualiza o tempo do último evento
-        printf("Mudanca de Estado do Led. A = %d\n", a);
-        gpio_put(RED_LED_PIN, !gpio_get(RED_LED_PIN)); // Alterna o estado
-        a++;                                     // incrementa a variavel de verificação
+        set_led(255, 102, 178); // setando os leds na cor rosa
+        //set_led(0, 0, 0);
+        count_a = count_a + 25;                                     // incrementa a variavel de verificação
     }
 }
 
@@ -109,10 +129,10 @@ int main() {
 
     while (1) 
     {
-        set_led(255, 102, 178); // setando os leds na cor rosa
-        sleep_ms(3000);
-        set_led(0, 0, 0);
-        sleep_ms(3000);
+        gpio_put(RED_LED_PIN, 1);
+        sleep_ms(1000);
+        gpio_put(RED_LED_PIN, 0);
+        sleep_ms(1000);
     }
 
     return 0;
