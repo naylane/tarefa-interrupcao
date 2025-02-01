@@ -24,18 +24,14 @@
 #define A_BTN_PIN 5
 #define B_BTN_PIN 6
 #define IS_RGBW false
-#define NUM_PIXELS 100
 #define WS2812_PIN 7
 
 // Variáveis globais
-static volatile uint count_a = 0;
+static volatile uint current_number = 0;
 static volatile uint32_t last_time = 0; // Armazena o tempo do último evento (em microssegundos)
 
-// Prototipação da função de interrupção
-//static void gpio_irq_handler(uint gpio, uint32_t events);
-
 // Buffer para armazenar quais LEDs estão ligados matriz 5x5
-bool led_buffer[NUM_PIXELS] = {
+bool led_buffer[10][25] = {
     0, 1, 1, 1, 0, 
     1, 0, 0, 0, 1, 
     1, 0, 0, 0, 1, 
@@ -61,6 +57,13 @@ bool led_buffer[NUM_PIXELS] = {
     1, 1, 1, 1, 0
 };
 
+// Prototipação da função de interrupção
+static inline void put_pixel(uint32_t pixel_grb);
+static inline uint32_t urgb_u32(uint8_t r, uint8_t g, uint8_t b);
+void set_led(uint8_t r, uint8_t g, uint8_t b);
+static void gpio_irq_handler(uint gpio, uint32_t events);
+
+
 static inline void put_pixel(uint32_t pixel_grb) {
     pio_sm_put_blocking(pio0, 0, pixel_grb << 8u);
 }
@@ -74,9 +77,8 @@ void set_led(uint8_t r, uint8_t g, uint8_t b) {
     uint32_t color = urgb_u32(r, g, b);
 
     // Define todos os LEDs com a cor especificada
-    int i = 0;
-    for (count_a; i < 25; i++) {
-        if (led_buffer[i]) {
+    for (int i = 0; i < 25; i++) {
+        if (led_buffer[current_number][i]) {
             put_pixel(color); // Liga o LED com um no buffer
         }
         else {
@@ -89,14 +91,19 @@ void set_led(uint8_t r, uint8_t g, uint8_t b) {
 static void gpio_irq_handler(uint gpio, uint32_t events) {
     // Obtém o tempo atual em microssegundos
     uint32_t current_time = to_us_since_boot(get_absolute_time());
-    printf("A = %d\n", count_a);
+    printf("A = %d\n", current_number);
     // Verifica se passou tempo suficiente desde o último evento
     if (current_time - last_time > 2000000) // 200 ms? de debouncing
     {
         last_time = current_time; // Atualiza o tempo do último evento
-        set_led(255, 102, 178); // setando os leds na cor rosa
-        //set_led(0, 0, 0);
-        count_a = count_a + 25;                                     // incrementa a variavel de verificação
+
+        if (gpio == 5) {
+            set_led(255, 102, 178); // setando os leds na cor rosa
+            if(current_number < 10) { current_number++; }
+        } else if (gpio == 6) {
+            set_led(255, 102, 178); // setando os leds na cor rosa
+            if(current_number > 0) { current_number--; }
+        }
     }
 }
 
@@ -124,8 +131,9 @@ int main() {
 
     ws2812_program_init(pio, sm, offset, WS2812_PIN, 800000, IS_RGBW);
 
-    // Configuração da interrupção com callback
+    // Configuração das interrupções dos botões com callback
     gpio_set_irq_enabled_with_callback(A_BTN_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
+    gpio_set_irq_enabled_with_callback(B_BTN_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
 
     while (1) 
     {
